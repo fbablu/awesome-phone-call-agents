@@ -1,0 +1,29 @@
+{
+  "name": "tether-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tether backend: Bengali/English voice requests from a family member, triage, caregiver approval, CALL-E goal runs. Dry-run by default.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "bakeoff": "tsx scripts/bakeoff.ts",
+    "demo": "TETHER_DRY_RUN=true tsx scripts/demo.ts"
+  },
+  "dependencies": {
+    "@call-e/calle": "^0.7.0",
+    "@google/genai": "^1.20.0",
+    "@hono/node-server": "^1.14.0",
+    "dotenv": "^17.4.2",
+    "hono": "^4.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}

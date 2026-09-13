@@ -1,0 +1,194 @@
+{
+ "A01": {
+  "bn": "আমার ব্লাড প্রেশারের ওষুধ শেষ হয়ে গেছে, refill করতে হবে।",
+  "gloss": "My blood-pressure medicine is finished, it needs a refill."
+ },
+ "A02": {
+  "bn": "ডাক্তারের সাথে একটা appointment নিতে হবে, আমার হাঁটুতে ব্যথা।",
+  "gloss": "Need to make a doctor's appointment, my knee hurts."
+ },
+ "A03": {
+  "bn": "চোখের ডাক্তারের appointment টা পরের সপ্তাহে change করে দাও।",
+  "gloss": "Change the eye-doctor appointment to next week."
+ },
+ "A04": {
+  "bn": "Pharmacy থেকে ফোন এসেছিল, কী বলেছে একটু জেনে নাও।",
+  "gloss": "The pharmacy called, find out what they said."
+ },
+ "A05": {
+  "bn": "আমার ডায়াবেটিসের টেস্টের রেজাল্ট এসেছে কি না দেখো।",
+  "gloss": "Check whether my diabetes test result has come."
+ },
+ "A06": {
+  "bn": "দাঁতের ডাক্তারের কাছে cleaning এর জন্য যেতে হবে।",
+  "gloss": "Need to go to the dentist for a cleaning."
+ },
+ "A07": {
+  "bn": "Insurance card টা কোথায় রেখেছি মনে নেই, নতুন একটা লাগবে।",
+  "gloss": "I don't remember where I put the insurance card, I need a new one."
+ },
+ "A08": {
+  "bn": "এই মাসের বিদ্যুৎ বিলটা একটু বেশি এসেছে, দেখো তো।",
+  "gloss": "This month's electricity bill came a bit high, take a look."
+ },
+ "A09": {
+  "bn": "আমার account এ কত টাকা আছে একটু বলো।",
+  "gloss": "Tell me how much money is in my account."
+ },
+ "A10": {
+  "bn": "Netflix এর subscription টা বন্ধ করে দাও, আমি দেখি না।",
+  "gloss": "Cancel the Netflix subscription, I don't watch it."
+ },
+ "A11": {
+  "bn": "Credit card এর বিল কবে দিতে হবে?",
+  "gloss": "When is the credit-card bill due?"
+ },
+ "A12": {
+  "bn": "Bank থেকে একটা চিঠি এসেছে, বুঝতে পারছি না কী লিখেছে।",
+  "gloss": "A letter came from the bank, I can't understand what it says."
+ },
+ "A13": {
+  "bn": "Insurance এর premium টা এই মাসে দেওয়া হয়েছে কি?",
+  "gloss": "Has this month's insurance premium been paid?"
+ },
+ "A14": {
+  "bn": "Insurance company তে ফোন করে জিজ্ঞেস করো এই ওষুধটা cover করে কি না।",
+  "gloss": "Call the insurance company and ask whether they cover this medicine."
+ },
+ "A15": {
+  "bn": "বাজার করতে হবে, চাল, ডাল আর তেল শেষ।",
+  "gloss": "Need groceries — rice, lentils and oil are finished."
+ },
+ "A16": {
+  "bn": "WiFi কাজ করছে না, একটু দেখো।",
+  "gloss": "The WiFi isn't working, have a look."
+ },
+ "A17": {
+  "bn": "বাসার heater টা ঠিক মতো চলছে না।",
+  "gloss": "The house heater isn't running properly."
+ },
+ "A18": {
+  "bn": "পানির বিলটা কি দেওয়া হয়েছে?",
+  "gloss": "Has the water bill been paid?"
+ },
+ "A19": {
+  "bn": "Tenant এই মাসের ভাড়া দিয়েছে কি না দেখো।",
+  "gloss": "Check whether the tenant paid this month's rent."
+ },
+ "A20": {
+  "bn": "আমার ফোনের bill টা কত এসেছে?",
+  "gloss": "How much is my phone bill?"
+ },
+ "A21": {
+  "bn": "আগামীকাল ডাক্তারের appointment টা মনে করিয়ে দিও।",
+  "gloss": "Remind me about tomorrow's doctor appointment."
+ },
+ "A22": {
+  "bn": "Amazon থেকে যে জিনিসটা order করেছিলাম, সেটা এখনো আসেনি।",
+  "gloss": "The thing I ordered from Amazon still hasn't arrived."
+ },
+ "A23": {
+  "bn": "আমাকে একটু ফোন করো, একটা জরুরি কথা আছে।",
+  "gloss": "Call me, there's something urgent."
+ },
+ "A24": {
+  "bn": "আজকে কিছু লাগবে না, সব ঠিক আছে।",
+  "gloss": "Nothing needed today, everything's fine."
+ },
+ "B01": {
+  "bn": "আমার cholesterol এর ওষুধ refill করার সময় হয়ে গেছে।",
+  "gloss": "It's time to refill my cholesterol medicine."
+ },
+ "B02": {
+  "bn": "পিঠে ব্যথা করছে, ডাক্তারকে একবার দেখাতে হবে।",
+  "gloss": "My back hurts, I need to see the doctor."
+ },
+ "B03": {
+  "bn": "Physical checkup এর জন্য একটা appointment বানাও।",
+  "gloss": "Make an appointment for a physical checkup."
+ },
+ "B04": {
+  "bn": "Lab এ blood test করাতে হবে, কবে যাবো?",
+  "gloss": "I need a blood test at the lab, when should I go?"
+ },
+ "B05": {
+  "bn": "হার্টের ডাক্তার যে ওষুধ দিয়েছে সেটার নাম কী?",
+  "gloss": "What's the name of the medicine the heart doctor gave?"
+ },
+ "B06": {
+  "bn": "Hospital থেকে একটা bill এসেছে, এটা কি insurance দেবে?",
+  "gloss": "A bill came from the hospital, will insurance pay it?"
+ },
+ "B07": {
+  "bn": "আমার insurance এর কাগজপত্র গুলো একসাথে রাখো।",
+  "gloss": "Keep my insurance papers together."
+ },
+ "B08": {
+  "bn": "Mortgage এর payment টা কি এই মাসে চলে গেছে?",
+  "gloss": "Has the mortgage payment gone through this month?"
+ },
+ "B09": {
+  "bn": "আমার savings account এ কত আছে?",
+  "gloss": "How much is in my savings account?"
+ },
+ "B10": {
+  "bn": "Gas bill টা online এ দিয়ে দাও।",
+  "gloss": "Pay the gas bill online."
+ },
+ "B11": {
+  "bn": "Car insurance টা renew করতে হবে, দাম কত বলে?",
+  "gloss": "Car insurance needs renewing, what price are they quoting?"
+ },
+ "B12": {
+  "bn": "Bank এ ফোন করে জিজ্ঞেস করো এই charge টা কিসের।",
+  "gloss": "Call the bank and ask what this charge is for."
+ },
+ "B13": {
+  "bn": "Property tax কবে দিতে হবে?",
+  "gloss": "When is property tax due?"
+ },
+ "B14": {
+  "bn": "Tenant বলেছে বাসার sink থেকে পানি পড়ছে, plumber ডাকতে হবে।",
+  "gloss": "The tenant says the sink is leaking, need to call a plumber."
+ },
+ "B15": {
+  "bn": "অন্য বাসাটার ভাড়া দুই মাস বাকি, tenant কে ফোন দাও।",
+  "gloss": "Rent on the other house is two months behind, call the tenant."
+ },
+ "B16": {
+  "bn": "Landlord হিসেবে যে কাগজ sign করতে হবে সেটা পাঠাও।",
+  "gloss": "Send the paper I need to sign as landlord."
+ },
+ "B17": {
+  "bn": "গাড়ির oil change করার সময় হয়েছে।",
+  "gloss": "It's time for the car's oil change."
+ },
+ "B18": {
+  "bn": "বাসার সামনের ঘাস কাটার লোক ডাকো।",
+  "gloss": "Call the person who cuts the front lawn."
+ },
+ "B19": {
+  "bn": "Electricity company কে ফোন করে বলো meter টা check করতে।",
+  "gloss": "Call the electricity company and tell them to check the meter."
+ },
+ "B20": {
+  "bn": "আমার ফোনে ইন্টারনেট চলছে না।",
+  "gloss": "The internet isn't working on my phone."
+ },
+ "B21": {
+  "bn": "আজকের সব কাজ শেষ, কিছু বাকি আছে?",
+  "gloss": "Today's tasks are done, is anything left?"
+ },
+ "B22": {
+  "bn": "তোমার সাথে কথা বলার দরকার, সময় হলে ফোন দিও।",
+  "gloss": "I need to talk to you, call when you have time."
+ },
+ "B23": {
+  "bn": "Passport renew করতে হবে, কী কী লাগবে দেখো।",
+  "gloss": "Passport needs renewing, see what's required."
+ },
+ "B24": {
+  "bn": "এই কাজটা জরুরি না, পরে করলেও চলবে।",
+  "gloss": "This isn't urgent, later is fine."
+ }
+}

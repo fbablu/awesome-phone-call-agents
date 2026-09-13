@@ -1,0 +1,6 @@
+[
+  { "slot": "mom.checking.balance", "owner": "Mom", "label": "checking account", "kind": "balance" },
+  { "slot": "dad.savings.balance", "owner": "Dad", "label": "savings account", "kind": "balance" },
+  { "slot": "home.mortgage.status", "owner": "Mom", "label": "mortgage", "kind": "status" },
+  { "slot": "dad.card.due_date", "owner": "Dad", "label": "credit card bill", "kind": "due_date" }
+]

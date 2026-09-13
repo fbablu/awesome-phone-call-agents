@@ -1,0 +1,5 @@
+[
+  { "id": "cenlar", "label": "Cenlar (mortgage servicer)", "phone": "+15555550100", "category": "finance", "ownerMemberIds": ["mom", "dad"] },
+  { "id": "insurer", "label": "Health insurance member services", "phone": "+15555550101", "category": "health", "ownerMemberIds": ["dad"] },
+  { "id": "pharmacy", "label": "Neighborhood pharmacy", "phone": "+15555550102", "category": "health", "ownerMemberIds": ["dad", "mom"] }
+]
