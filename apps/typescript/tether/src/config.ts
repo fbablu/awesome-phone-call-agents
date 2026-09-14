@@ -36,6 +36,12 @@ export const config = {
   },
 
   geminiApiKey: process.env.TETHER_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY ?? "",
+
+  /** Optional shared secret every phone must send as x-tether-token. Set it once the server is on a shared network. */
+  familyToken: process.env.TETHER_FAMILY_TOKEN ?? "",
+
+  /** Names (never values) of TETHER_* variables that are set, for the health endpoint. */
+  envNames: Object.keys(process.env).filter((k) => k.startsWith("TETHER_")).sort(),
 };
 
 export type Config = typeof config;

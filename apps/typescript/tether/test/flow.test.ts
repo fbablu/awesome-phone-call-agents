@@ -8,8 +8,11 @@ import { makeService } from "../src/service.js";
 import { Store } from "../src/store.js";
 import { transcribeFixture } from "../src/stt/fixture.js";
 import { triageFixture } from "../src/triage/index.js";
+import { config } from "../src/config.js";
 
 function harness() {
+  // Tests must not depend on the developer's real .env (family token, dry-run flag).
+  (config as { familyToken: string }).familyToken = "";
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tether-test-"));
   const store = new Store(dir);
   store.saveContacts(JSON.parse(fs.readFileSync("fixtures/contacts.example.json", "utf8")));
@@ -89,4 +92,17 @@ test("multipart audio goes through the transcriber using the corpus hint", async
   const req = await res.json();
   assert.match(req.transcript.text, /Insurance/);
   assert.equal(req.triage.kind, "phone_task");
+});
+
+test("family token gates every route except health when configured", async () => {
+  const { app } = harness();
+  const prev = config.familyToken;
+  (config as { familyToken: string }).familyToken = "secret";
+  try {
+    assert.equal((await app.request("/v1/health")).status, 200);
+    assert.equal((await app.request("/v1/contacts")).status, 401);
+    assert.equal((await app.request("/v1/contacts", { headers: { "x-tether-token": "secret" } })).status, 200);
+  } finally {
+    (config as { familyToken: string }).familyToken = prev;
+  }
 });

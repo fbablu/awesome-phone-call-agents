@@ -27,6 +27,9 @@ export async function placeCall(input: PlaceCallInput, opts: { dryRun?: boolean 
   const mode: "goal" | "one_shot" = config.calle.goalId ? "goal" : "one_shot";
 
   if (dryRun) {
+    // Test hook: a question containing "[needs_human]" simulates the safety branch (business demands the
+    // account holder), so the needs_human state can be exercised without a phone.
+    const humanRequired = /\[needs_human\]/i.test(task.question);
     return CallOutcome.parse({
       provider: "calle",
       mode,
@@ -37,9 +40,11 @@ export async function placeCall(input: PlaceCallInput, opts: { dryRun?: boolean 
       result: {
         answer: "unknown",
         details: `[DRY RUN] Would call ${input.contactLabel} (${maskPhone(input.phone)}) on behalf of ${task.on_behalf_of}: ${task.question}`,
-        human_required: false,
-        next_steps: "Set TETHER_DRY_RUN=false to place a real call.",
-        channel: "unknown",
+        human_required: humanRequired,
+        next_steps: humanRequired
+          ? "[DRY RUN] The business requires the account holder. Call them together, or send the signed authorization form they asked for."
+          : "Set TETHER_DRY_RUN=false to place a real call.",
+        channel: humanRequired ? "phone" : "unknown",
         reference_number: "",
         callback_needed: false,
       },

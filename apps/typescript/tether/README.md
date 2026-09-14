@@ -47,12 +47,23 @@ See `docs/SAFETY.md` for the full pattern.
 | Method | Path | Who | What |
 |---|---|---|---|
 | GET | `/v1/health` | anyone | dry-run flag, goal configured or fallback |
+| GET | `/v1/health/gemini` | anyone | one live Gemini call, says whether the key works |
 | GET | `/v1/contacts` | anyone | allowlist with masked numbers |
 | POST | `/v1/requests` | any member | JSON `{memberId, memberName, role, transcript?, catalog}` or multipart `meta` + `audio` (+ `hint`) |
 | GET | `/v1/requests?memberId=` | member | caregivers see all; others see their own |
 | GET | `/v1/requests/:id` | member | same visibility rule |
 | POST | `/v1/requests/:id/approve` | caregiver only | `{by, contactId, question?, constraints?}` runs the Goal |
 | POST | `/v1/requests/:id/cancel` | member | before approval |
+
+`/v1/health/gemini` makes one cheap text call to the configured triage model so you can tell a bad key from a bad network without opening `.env`. It is open like `/v1/health` and reports only the key's shape (`legacy_aiza`, `auth_key_aq`, `unknown`) and length, never any part of the key itself.
+
+```
+curl -s localhost:8787/v1/health/gemini
+{"ok":true,"model":"gemini-3.8-flash","keyFormat":"legacy_aiza","keyLength":39,"sample":"OK"}
+{"ok":false,"model":"gemini-3.8-flash","keyFormat":"auth_key_aq","keyLength":88,"httpStatus":401,"googleStatus":"UNAUTHENTICATED","reason":"ACCESS_TOKEN_TYPE_UNSUPPORTED"}
+```
+
+With no key set at all it returns `{"ok":false,"reason":"no_key"}`.
 
 Identity is three headers on a private network: `x-tether-member`, `x-tether-role` (`caregiver`, `supporter`, `loved_one`), `x-tether-name`. Replace with real auth before a multi-family deployment.
 
@@ -69,3 +80,7 @@ Apple's on-device recognizers do not support Bengali (checked on macOS 26.6: 63 
 ## Verification
 
 `pnpm test` covers: answer-from-data never contains a number, phone tasks wait for approval, loved ones cannot approve, non-allowlisted contacts are refused, dry-run completes with an audit trail, the person concerned can always read their own request, multipart audio reaches the transcriber. A live verification is opt-in: set `TETHER_DRY_RUN=false`, put your own number in `data/contacts.json`, approve one request.
+
+### Early local-mode measurement
+
+A synthesized Bengali corpus line (A14, macOS Piya voice) through whisper.cpp large-v3-turbo with `-l bn` came back as `"Insurance Company Cover"`: every Bengali word dropped, only the English loanwords survived. Synthetic audio is not a benchmark, but it matches the published 34% CER and is why local mode is labeled privacy, not accuracy. Real numbers from the family corpus go here after the bake-off.

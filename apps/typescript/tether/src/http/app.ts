@@ -4,6 +4,7 @@ import { ApproveBody, CreateRequestBody, Role } from "../domain.js";
 import { makeService, ServiceError } from "../service.js";
 import { config } from "../config.js";
 import { ContactNotAllowed } from "../safety.js";
+import { probeGemini } from "../stt/gemini-diag.js";
 
 /**
  * Viewer identity comes from headers for now (single-family, private network).
@@ -19,7 +20,30 @@ function viewer(c: { req: { header: (n: string) => string | undefined } }) {
 export function buildApp(service = makeService()) {
   const app = new Hono();
 
-  app.get("/v1/health", (c) => c.json({ ok: true, dryRun: service.deps.dryRun, goal: config.calle.goalId ? "configured" : "one_shot_fallback" }));
+  app.get("/", (c) => c.text("tether-server is running. Try /v1/health"));
+
+  // Shared family secret. Health stays open so a phone can tell "wrong token" from "unreachable".
+  app.use("/v1/*", async (c, next) => {
+    if (c.req.path.startsWith("/v1/health") || !config.familyToken) return next();
+    if (c.req.header("x-tether-token") !== config.familyToken) return c.json({ error: "invalid family token" }, 401);
+    return next();
+  });
+
+  app.get("/v1/health", (c) =>
+    c.json({
+      ok: true,
+      dryRun: service.deps.dryRun,
+      goal: config.calle.goalId ? "configured" : "one_shot_fallback",
+      stt: config.stt.provider,
+      triage: config.triage.provider,
+      keys: { calle: Boolean(config.calle.apiKey), gemini: Boolean(config.geminiApiKey) },
+      tokenRequired: Boolean(config.familyToken),
+      envNames: config.envNames,
+    }),
+  );
+
+  // Debug a Gemini key without opening .env. Returns the key shape and length, never the key.
+  app.get("/v1/health/gemini", async (c) => c.json(await probeGemini()));
 
   app.get("/v1/contacts", (c) => c.json(service.deps.store.listContacts().map(({ phone, ...rest }) => ({ ...rest, phoneMasked: phone.slice(0, 3) + "***" + phone.slice(-2) }))));
 
