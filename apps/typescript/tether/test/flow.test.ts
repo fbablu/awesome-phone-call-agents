@@ -1,34 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { buildApp } from "../src/http/app.js";
-import { makeService } from "../src/service.js";
-import { Store } from "../src/store.js";
-import { transcribeFixture } from "../src/stt/fixture.js";
-import { triageFixture } from "../src/triage/index.js";
-import { config } from "../src/config.js";
 import type { probeGemini } from "../src/stt/gemini-diag.js";
-
-function harness(opts: { probeGemini?: typeof probeGemini } = {}) {
-  // Tests must not depend on the developer's real .env (family token, dry-run flag).
-  (config as { familyToken: string }).familyToken = "";
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tether-test-"));
-  const store = new Store(dir);
-  store.saveContacts(JSON.parse(fs.readFileSync("fixtures/contacts.example.json", "utf8")));
-  const service = makeService({ store, transcribe: transcribeFixture, triage: triageFixture, dryRun: true });
-  return { app: buildApp(service, opts), store };
-}
-const catalog = JSON.parse(fs.readFileSync("fixtures/catalog.example.json", "utf8"));
-const caregiver = { "x-tether-member": "me", "x-tether-role": "caregiver", "x-tether-name": "Fardeen" };
-const parent = { "x-tether-member": "dad", "x-tether-role": "loved_one" };
+import { caregiver, catalog, dad, harness, json, mom, withFamilyToken } from "./helpers.js";
 
 test("balance question is answered from data with a slot, never a number", async () => {
   const { app } = harness();
   const res = await app.request("/v1/requests", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: json,
     body: JSON.stringify({ memberId: "dad", memberName: "Dad", role: "loved_one", transcript: "আমার account এ কত টাকা আছে একটু বলো।", catalog }),
   });
   assert.equal(res.status, 201);
@@ -43,7 +22,7 @@ test("phone task waits for caregiver approval, loved one cannot approve, dry-run
   const { app } = harness();
   const create = await app.request("/v1/requests", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: json,
     body: JSON.stringify({ memberId: "mom", memberName: "Mom", role: "loved_one", transcript: "Cenlar loan is paid in full, where is the paid in full packet?", catalog }),
   });
   const req = await create.json();
@@ -52,21 +31,21 @@ test("phone task waits for caregiver approval, loved one cannot approve, dry-run
 
   const denied = await app.request(`/v1/requests/${req.id}/approve`, {
     method: "POST",
-    headers: { "content-type": "application/json", ...parent },
+    headers: { ...json, ...dad },
     body: JSON.stringify({ by: "dad", contactId: "cenlar" }),
   });
   assert.equal(denied.status, 403);
 
   const bad = await app.request(`/v1/requests/${req.id}/approve`, {
     method: "POST",
-    headers: { "content-type": "application/json", ...caregiver },
+    headers: { ...json, ...caregiver },
     body: JSON.stringify({ by: "me", contactId: "number-mom-said-out-loud" }),
   });
   assert.equal(bad.status, 400);
 
   const ok = await app.request(`/v1/requests/${req.id}/approve`, {
     method: "POST",
-    headers: { "content-type": "application/json", ...caregiver },
+    headers: { ...json, ...caregiver },
     body: JSON.stringify({ by: "me", contactId: "cenlar" }),
   });
   assert.equal(ok.status, 200);
@@ -76,9 +55,9 @@ test("phone task waits for caregiver approval, loved one cannot approve, dry-run
   assert.equal(done.approval.contactLabel, "Cenlar (mortgage servicer)");
   assert.ok(done.audit.some((a: { event: string }) => a.event.startsWith("call:completed")));
 
-  const momView = await app.request(`/v1/requests/${req.id}`, { headers: { "x-tether-member": "mom", "x-tether-role": "loved_one" } });
+  const momView = await app.request(`/v1/requests/${req.id}`, { headers: mom });
   assert.equal(momView.status, 200, "the person the call concerns can always see it");
-  const dadView = await app.request(`/v1/requests/${req.id}`, { headers: parent });
+  const dadView = await app.request(`/v1/requests/${req.id}`, { headers: dad });
   assert.equal(dadView.status, 403);
 });
 
@@ -97,16 +76,12 @@ test("multipart audio goes through the transcriber using the corpus hint", async
 
 test("family token gates every route except health when configured", async () => {
   const { app } = harness();
-  const prev = config.familyToken;
-  (config as { familyToken: string }).familyToken = "secret";
-  try {
+  await withFamilyToken("secret", async () => {
     assert.equal((await app.request("/v1/health")).status, 200);
     assert.equal((await app.request("/v1/contacts")).status, 401);
     assert.equal((await app.request("/v1/healthy")).status, 401, "only the two health paths are open");
     assert.equal((await app.request("/v1/contacts", { headers: { "x-tether-token": "secret" } })).status, 200);
-  } finally {
-    (config as { familyToken: string }).familyToken = prev;
-  }
+  });
 });
 
 test("the gemini health probe is open without a token, and is throttled", async () => {
@@ -116,9 +91,7 @@ test("the gemini health probe is open without a token, and is throttled", async 
     return { ok: true };
   }) as unknown as typeof probeGemini;
   const { app } = harness({ probeGemini: fakeProbe });
-  const prev = config.familyToken;
-  (config as { familyToken: string }).familyToken = "secret";
-  try {
+  await withFamilyToken("secret", async () => {
     const res = await app.request("/v1/health/gemini");
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { ok: true });
@@ -131,7 +104,5 @@ test("the gemini health probe is open without a token, and is throttled", async 
     assert.equal(body.ok, true);
     assert.equal(typeof body.cachedAt, "string");
     assert.equal(calls, 1);
-  } finally {
-    (config as { familyToken: string }).familyToken = prev;
-  }
+  });
 });

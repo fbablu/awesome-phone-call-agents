@@ -47,7 +47,7 @@ See `docs/SAFETY.md` for the full pattern.
 | Method | Path | Who | What |
 |---|---|---|---|
 | GET | `/v1/health` | anyone | dry-run flag, goal configured or fallback |
-| GET | `/v1/health/gemini` | anyone | one live Gemini call per configured model, says whether the key works, cached 30s |
+| GET | `/v1/health/gemini` | anyone | whether the Gemini key works |
 | GET | `/v1/contacts` | anyone | allowlist with masked numbers |
 | POST | `/v1/requests` | any member | JSON `{memberId, memberName, role, transcript?, catalog}` or multipart `meta` + `audio` (+ `hint`) |
 | GET | `/v1/requests?memberId=` | member | caregivers see all; others see their own |
@@ -58,15 +58,13 @@ See `docs/SAFETY.md` for the full pattern.
 
 `/v1/requests/:id/consent` records that the person the call is about heard what would be asked and said yes or no: a decline cancels the request and makes approve return 409, and no consent at all still lets the caregiver approve, it just shows as waiting in the app.
 
-`/v1/health/gemini` makes one cheap text call per distinct configured model (`TETHER_STT_MODEL` and `TETHER_TRIAGE_MODEL`, usually the same string, so usually one call) so you can tell a bad key from a bad network without opening `.env`. It is open like `/v1/health` and reports only the key's shape (`legacy_aiza`, `auth_key_aq`, `unknown`) and length, never any part of the key itself. Top-level `ok` is true only if every model answered. The result is cached for 30 seconds, so refreshing does not hammer Google; a cached response carries `cachedAt`.
+`/v1/health/gemini` makes one cheap text call per distinct configured model (`TETHER_STT_MODEL` and `TETHER_TRIAGE_MODEL`, usually the same string, so usually one call) so you can tell a bad key from a bad network without opening `.env`. It is open like `/v1/health` and reports only the key's shape (`legacy_aiza`, `auth_key_aq`, `unknown`) and length, never any part of the key itself. Top-level `ok` is true only if every model answered. Results are cached for 30 seconds, so refreshing does not hammer Google; a cached response carries `cachedAt`. With no key set at all it returns `{"ok":false,"reason":"no_key"}`.
 
 ```
 curl -s localhost:8787/v1/health/gemini
 {"ok":true,"keyFormat":"auth_key_aq","keyLength":54,"models":{"gemini-3.8-flash":{"ok":true,"sample":"OK"}}}
 {"ok":false,"keyFormat":"auth_key_aq","keyLength":54,"models":{"gemini-3.8-flash":{"ok":false,"httpStatus":401,"googleStatus":"UNAUTHENTICATED","reason":"ACCESS_TOKEN_TYPE_UNSUPPORTED"}}}
 ```
-
-With no key set at all it returns `{"ok":false,"reason":"no_key"}`.
 
 Identity is three headers on a private network: `x-tether-member`, `x-tether-role` (`caregiver`, `supporter`, `loved_one`), `x-tether-name`. Replace with real auth before a multi-family deployment.
 

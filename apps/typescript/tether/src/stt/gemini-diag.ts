@@ -26,7 +26,7 @@ const PROBE_PROMPT = "Reply with the single word OK";
 /** Keep an unparsed provider error short enough to read in a terminal. */
 const REASON_MAX = 120;
 
-export function keyFormatOf(key: string): GeminiKeyFormat {
+function keyFormatOf(key: string): GeminiKeyFormat {
   if (key.startsWith("AIza")) return "legacy_aiza";
   if (key.startsWith("AQ.")) return "auth_key_aq";
   return "unknown";
@@ -86,7 +86,7 @@ async function probeModel(model: string, timeoutMs: number, generate?: (model: s
 }
 
 /** Every distinct model the app would use. One entry when STT and triage share a model. */
-export function probeModelNames(): string[] {
+function probeModelNames(): string[] {
   return [...new Set([config.stt.geminiModel, config.triage.geminiModel].filter(Boolean))];
 }
 

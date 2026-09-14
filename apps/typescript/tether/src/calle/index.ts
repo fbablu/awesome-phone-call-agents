@@ -3,6 +3,12 @@ import { config } from "../config.js";
 import { CallOutcome, type PhoneTask } from "../domain.js";
 import { withHardConstraints } from "../safety.js";
 
+/**
+ * Test hook: a question carrying "[needs_human]" simulates the safety branch (the business
+ * demands the account holder), so that state can be exercised without a phone.
+ */
+const NEEDS_HUMAN_MARKER = /\[needs_human\]/gi;
+
 export interface PlaceCallInput {
   requestId: string;
   phone: string;
@@ -22,11 +28,10 @@ export interface PlaceCallInput {
 export async function placeCall(input: PlaceCallInput, opts: { dryRun?: boolean } = {}): Promise<CallOutcome> {
   const dryRun = opts.dryRun ?? config.dryRun;
   const constrained = withHardConstraints(input.task);
-  // Test hook: a question containing "[needs_human]" simulates the safety branch (business demands the
-  // account holder), so the needs_human state can be exercised without a phone. The marker is stripped
-  // here, before either branch, so it never reaches CALL-E and never shows up in dry-run text.
-  const humanRequired = /\[needs_human\]/i.test(constrained.question);
-  const task = { ...constrained, question: constrained.question.replace(/\[needs_human\]/gi, "").trim() };
+  // Stripped here, before either branch, so the marker never reaches CALL-E or dry-run text.
+  const question = constrained.question.replace(NEEDS_HUMAN_MARKER, "").trim();
+  const humanRequired = question !== constrained.question.trim();
+  const task = { ...constrained, question };
   const startedAt = new Date().toISOString();
   const idempotencyKey = `tether:${input.requestId}:attempt-${input.attempt ?? 1}`;
   const mode: "goal" | "one_shot" = config.calle.goalId ? "goal" : "one_shot";

@@ -1,32 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { buildApp } from "../src/http/app.js";
-import { makeService } from "../src/service.js";
-import { Store } from "../src/store.js";
-import { transcribeFixture } from "../src/stt/fixture.js";
-import { triageFixture } from "../src/triage/index.js";
-import { config } from "../src/config.js";
+import { type App, caregiver, catalog, harness, json, mom, sister } from "./helpers.js";
 
-function harness() {
-  // Tests must not depend on the developer's real .env (family token, dry-run flag).
-  (config as { familyToken: string }).familyToken = "";
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tether-consent-"));
-  const store = new Store(dir);
-  store.saveContacts(JSON.parse(fs.readFileSync("fixtures/contacts.example.json", "utf8")));
-  const service = makeService({ store, transcribe: transcribeFixture, triage: triageFixture, dryRun: true });
-  return { app: buildApp(service), store };
-}
-const catalog = JSON.parse(fs.readFileSync("fixtures/catalog.example.json", "utf8"));
-const caregiver = { "x-tether-member": "me", "x-tether-role": "caregiver", "x-tether-name": "Fardeen" };
-const mom = { "x-tether-member": "mom", "x-tether-role": "loved_one" };
-const sister = { "x-tether-member": "sis", "x-tether-role": "supporter" };
-const json = { "content-type": "application/json" };
-
-type App = ReturnType<typeof harness>["app"];
-
+/** A request that has been triaged into a phone task and is waiting on a caregiver. */
 async function pending(app: App) {
   const res = await app.request("/v1/requests", {
     method: "POST",

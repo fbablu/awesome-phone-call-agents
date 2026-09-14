@@ -4,17 +4,28 @@ import { ApproveBody, ConsentBody, CreateRequestBody, Role } from "../domain.js"
 import { makeService, ServiceError } from "../service.js";
 import { config } from "../config.js";
 import { ContactNotAllowed } from "../safety.js";
-import { probeGemini } from "../stt/gemini-diag.js";
+import { probeGemini, type GeminiProbeResult } from "../stt/gemini-diag.js";
+
+type HeaderCtx = { req: { header: (n: string) => string | undefined } };
 
 /**
  * Viewer identity comes from headers for now (single-family, private network).
  * Replace with real auth before any multi-family deployment.
  */
-function viewer(c: { req: { header: (n: string) => string | undefined } }) {
+function viewer(c: HeaderCtx) {
   const memberId = c.req.header("x-tether-member") ?? "";
   const role = Role.safeParse(c.req.header("x-tether-role") ?? "");
   if (!memberId || !role.success) return undefined;
   return { memberId, role: role.data, name: c.req.header("x-tether-name") ?? memberId };
+}
+
+const VIEWER_HEADERS_REQUIRED = "x-tether-member and x-tether-role headers required";
+
+/** Every member-scoped route needs a viewer; a missing or unreadable role is a 401, not a 403. */
+function requireViewer(c: HeaderCtx, missing = VIEWER_HEADERS_REQUIRED) {
+  const v = viewer(c);
+  if (!v) throw new ServiceError(401, missing);
+  return v;
 }
 
 /** The only paths outside the family-token gate, so a phone can tell "wrong token" from "unreachable". */
@@ -26,7 +37,7 @@ const PROBE_CACHE_MS = 30_000;
 export function buildApp(service = makeService(), opts: { probeGemini?: typeof probeGemini } = {}) {
   const app = new Hono();
   const probe = opts.probeGemini ?? probeGemini;
-  let cached: { at: number; iso: string; result: Awaited<ReturnType<typeof probeGemini>> } | undefined;
+  let cached: { at: number; result: GeminiProbeResult } | undefined;
 
   app.get("/", (c) => c.text("tether-server is running. Try /v1/health"));
 
@@ -52,10 +63,9 @@ export function buildApp(service = makeService(), opts: { probeGemini?: typeof p
 
   // Debug a Gemini key without opening .env. Returns the key shape and length, never the key.
   app.get("/v1/health/gemini", async (c) => {
-    if (cached && Date.now() - cached.at < PROBE_CACHE_MS) return c.json({ ...cached.result, cachedAt: cached.iso });
+    if (cached && Date.now() - cached.at < PROBE_CACHE_MS) return c.json({ ...cached.result, cachedAt: new Date(cached.at).toISOString() });
     const result = await probe();
-    const at = Date.now();
-    cached = { at, iso: new Date(at).toISOString(), result };
+    cached = { at: Date.now(), result };
     return c.json(result);
   });
 
@@ -89,22 +99,19 @@ export function buildApp(service = makeService(), opts: { probeGemini?: typeof p
   app.get("/v1/requests/:id", (c) => c.json(service.getRequest(c.req.param("id"), viewer(c))));
 
   app.post("/v1/requests/:id/approve", async (c) => {
-    const v = viewer(c);
-    if (!v) throw new ServiceError(401, "x-tether-member and x-tether-role headers required");
+    const v = requireViewer(c);
     const body = ApproveBody.parse(await c.req.json());
     return c.json(await service.approve(c.req.param("id"), body, v));
   });
 
   app.post("/v1/requests/:id/consent", async (c) => {
-    const v = viewer(c);
-    if (!v) throw new ServiceError(401, "x-tether-member and x-tether-role headers required");
+    const v = requireViewer(c);
     const body = ConsentBody.parse(await c.req.json());
     return c.json(service.consent(c.req.param("id"), body, v));
   });
 
   app.post("/v1/requests/:id/cancel", (c) => {
-    const v = viewer(c);
-    if (!v) throw new ServiceError(401, "x-tether-member header required");
+    const v = requireViewer(c, "x-tether-member header required");
     return c.json(service.cancel(c.req.param("id"), v.memberId));
   });
 
