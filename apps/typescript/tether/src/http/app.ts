@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { ApproveBody, CreateRequestBody, Role } from "../domain.js";
+import { ApproveBody, ConsentBody, CreateRequestBody, Role } from "../domain.js";
 import { makeService, ServiceError } from "../service.js";
 import { config } from "../config.js";
 import { ContactNotAllowed } from "../safety.js";
@@ -17,14 +17,22 @@ function viewer(c: { req: { header: (n: string) => string | undefined } }) {
   return { memberId, role: role.data, name: c.req.header("x-tether-name") ?? memberId };
 }
 
-export function buildApp(service = makeService()) {
+/** The only paths outside the family-token gate, so a phone can tell "wrong token" from "unreachable". */
+const OPEN_PATHS = new Set(["/v1/health", "/v1/health/gemini"]);
+
+/** A live probe costs a Google call, so repeated hits inside this window reuse the last answer. */
+const PROBE_CACHE_MS = 30_000;
+
+export function buildApp(service = makeService(), opts: { probeGemini?: typeof probeGemini } = {}) {
   const app = new Hono();
+  const probe = opts.probeGemini ?? probeGemini;
+  let cached: { at: number; iso: string; result: Awaited<ReturnType<typeof probeGemini>> } | undefined;
 
   app.get("/", (c) => c.text("tether-server is running. Try /v1/health"));
 
-  // Shared family secret. Health stays open so a phone can tell "wrong token" from "unreachable".
+  // Shared family secret.
   app.use("/v1/*", async (c, next) => {
-    if (c.req.path.startsWith("/v1/health") || !config.familyToken) return next();
+    if (OPEN_PATHS.has(c.req.path) || !config.familyToken) return next();
     if (c.req.header("x-tether-token") !== config.familyToken) return c.json({ error: "invalid family token" }, 401);
     return next();
   });
@@ -43,7 +51,13 @@ export function buildApp(service = makeService()) {
   );
 
   // Debug a Gemini key without opening .env. Returns the key shape and length, never the key.
-  app.get("/v1/health/gemini", async (c) => c.json(await probeGemini()));
+  app.get("/v1/health/gemini", async (c) => {
+    if (cached && Date.now() - cached.at < PROBE_CACHE_MS) return c.json({ ...cached.result, cachedAt: cached.iso });
+    const result = await probe();
+    const at = Date.now();
+    cached = { at, iso: new Date(at).toISOString(), result };
+    return c.json(result);
+  });
 
   app.get("/v1/contacts", (c) => c.json(service.deps.store.listContacts().map(({ phone, ...rest }) => ({ ...rest, phoneMasked: phone.slice(0, 3) + "***" + phone.slice(-2) }))));
 
@@ -79,6 +93,13 @@ export function buildApp(service = makeService()) {
     if (!v) throw new ServiceError(401, "x-tether-member and x-tether-role headers required");
     const body = ApproveBody.parse(await c.req.json());
     return c.json(await service.approve(c.req.param("id"), body, v));
+  });
+
+  app.post("/v1/requests/:id/consent", async (c) => {
+    const v = viewer(c);
+    if (!v) throw new ServiceError(401, "x-tether-member and x-tether-role headers required");
+    const body = ConsentBody.parse(await c.req.json());
+    return c.json(service.consent(c.req.param("id"), body, v));
   });
 
   app.post("/v1/requests/:id/cancel", (c) => {

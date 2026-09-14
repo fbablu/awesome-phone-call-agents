@@ -11,6 +11,8 @@ import type { Contact, PhoneTask, Role } from "./domain.js";
  *    sharing identifiers, appended in code so a model cannot drop them.
  * 5. Digit strings are redacted before any text reaches a model.
  * 6. The person the call concerns always sees the transcript and result.
+ * 7. The person a call concerns can decline it, and a decline cannot be
+ *    overridden by anyone.
  */
 
 export const HARD_CONSTRAINTS = [

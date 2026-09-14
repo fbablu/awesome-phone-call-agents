@@ -2,26 +2,29 @@ import { GoogleGenAI } from "@google/genai";
 import { config } from "../config.js";
 
 /**
- * One cheap text call to Gemini so a developer can tell a bad key from a bad network
- * without opening .env. Never returns any part of the key, only its shape and length.
+ * One cheap text call to Gemini per configured model so a developer can tell a bad key
+ * from a bad network without opening .env. Never returns any part of the key, only its
+ * shape and length. STT and triage usually share one model, so that is usually one call.
  */
 
 export type GeminiKeyFormat = "legacy_aiza" | "auth_key_aq" | "unknown";
 
+export type GeminiModelProbe =
+  | { ok: true; sample: string }
+  | { ok: false; httpStatus: number | null; googleStatus: string | null; reason: string };
+
 export type GeminiProbeResult =
   | { ok: false; reason: "no_key" }
-  | { ok: true; model: string; keyFormat: GeminiKeyFormat; keyLength: number; sample: string }
   | {
-      ok: false;
-      model: string;
+      ok: boolean;
       keyFormat: GeminiKeyFormat;
       keyLength: number;
-      httpStatus: number | null;
-      googleStatus: string | null;
-      reason: string;
+      models: Record<string, GeminiModelProbe>;
     };
 
 const PROBE_PROMPT = "Reply with the single word OK";
+/** Keep an unparsed provider error short enough to read in a terminal. */
+const REASON_MAX = 120;
 
 export function keyFormatOf(key: string): GeminiKeyFormat {
   if (key.startsWith("AIza")) return "legacy_aiza";
@@ -31,7 +34,7 @@ export function keyFormatOf(key: string): GeminiKeyFormat {
 
 /** The SDK puts a JSON body in ApiError.message. Pull out what is useful, give up quietly if it is not JSON. */
 function parseApiError(message: string): { httpStatus: number | null; googleStatus: string | null; reason: string } {
-  const fallback = { httpStatus: null, googleStatus: null, reason: message.slice(0, 200) };
+  const fallback = { httpStatus: null, googleStatus: null, reason: message.slice(0, REASON_MAX) };
   const start = message.indexOf("{");
   if (start < 0) return fallback;
   let parsed: unknown;
@@ -60,35 +63,56 @@ async function defaultGenerate(model: string, signal: AbortSignal): Promise<stri
   return (res.text ?? "").trim();
 }
 
-export async function probeGemini(opts: {
-  model?: string;
-  timeoutMs?: number;
-  generate?: (model: string) => Promise<string>;
-} = {}): Promise<GeminiProbeResult> {
-  const key = config.geminiApiKey;
-  if (!key) return { ok: false, reason: "no_key" };
-
-  const model = opts.model ?? config.triage.geminiModel;
-  const timeoutMs = opts.timeoutMs ?? 15_000;
-  const base = { model, keyFormat: keyFormatOf(key), keyLength: key.length };
-
+async function probeModel(model: string, timeoutMs: number, generate?: (model: string) => Promise<string>): Promise<GeminiModelProbe> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       controller.abort();
-      reject(new Error(`gemini probe timed out after ${timeoutMs} ms`));
+      reject(new Error(`gemini probe timeout after ${timeoutMs} ms`));
     }, timeoutMs);
   });
 
   try {
-    const call = opts.generate ? opts.generate(model) : defaultGenerate(model, controller.signal);
+    const call = generate ? generate(model) : defaultGenerate(model, controller.signal);
     const text = await Promise.race([call, timeout]);
-    return { ok: true, ...base, sample: text.slice(0, 20) };
+    return { ok: true, sample: text.slice(0, 20) };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    return { ok: false, ...base, ...parseApiError(message) };
+    return { ok: false, ...parseApiError(message) };
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+/** Every distinct model the app would use. One entry when STT and triage share a model. */
+export function probeModelNames(): string[] {
+  return [...new Set([config.stt.geminiModel, config.triage.geminiModel].filter(Boolean))];
+}
+
+export async function probeGemini(
+  opts: {
+    /** Override the configured models with a single one. */
+    model?: string;
+    timeoutMs?: number;
+    generate?: (model: string) => Promise<string>;
+  } = {},
+): Promise<GeminiProbeResult> {
+  const key = config.geminiApiKey;
+  if (!key) return { ok: false, reason: "no_key" };
+
+  const models = opts.model ? [opts.model] : probeModelNames();
+  const timeoutMs = opts.timeoutMs ?? 15_000;
+
+  const results: Record<string, GeminiModelProbe> = {};
+  for (const model of models) {
+    results[model] = await probeModel(model, timeoutMs, opts.generate);
+  }
+
+  return {
+    ok: models.length > 0 && models.every((m) => results[m].ok),
+    keyFormat: keyFormatOf(key),
+    keyLength: key.length,
+    models: results,
+  };
 }

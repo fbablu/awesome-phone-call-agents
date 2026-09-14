@@ -73,6 +73,18 @@ export const CallOutcome = z.object({
 });
 export type CallOutcome = z.infer<typeof CallOutcome>;
 
+/**
+ * The person the call concerns hears the scope read out, answers one teach-back
+ * question, then says yes or no. A decline is final: nobody can override it.
+ */
+export const Consent = z.object({
+  state: z.enum(["given", "declined"]),
+  at: z.string(),
+  by: z.string(),
+  answeredCorrectly: z.boolean().optional(),
+});
+export type Consent = z.infer<typeof Consent>;
+
 export const TetherRequest = z.object({
   id: z.string(),
   familyId: z.string(),
@@ -90,6 +102,7 @@ export const TetherRequest = z.object({
     .object({ by: z.string(), at: z.string(), phone: z.string(), contactLabel: z.string() })
     .optional(),
   call: CallOutcome.optional(),
+  consent: Consent.optional(),
   audit: z.array(z.object({ at: z.string(), event: z.string(), by: z.string().optional() })),
 });
 export type TetherRequest = z.infer<typeof TetherRequest>;
@@ -115,6 +128,13 @@ export const ApproveBody = z.object({
   constraints: z.string().optional(),
 });
 export type ApproveBody = z.infer<typeof ApproveBody>;
+
+export const ConsentBody = z.object({
+  state: z.enum(["given", "declined"]),
+  /** Whether the teach-back question was answered right. Recorded, never a gate. */
+  answeredCorrectly: z.boolean().optional(),
+});
+export type ConsentBody = z.infer<typeof ConsentBody>;
 
 /** Contacts are the ONLY numbers the system may dial. Entered by the family, never by voice. */
 export const Contact = z.object({

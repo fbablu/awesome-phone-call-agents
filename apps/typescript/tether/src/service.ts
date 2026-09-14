@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { config } from "./config.js";
-import { ApproveBody, CreateRequestBody, type TetherRequest, type Role } from "./domain.js";
+import { ApproveBody, ConsentBody, CreateRequestBody, type TetherRequest, type Role } from "./domain.js";
 import { Store } from "./store.js";
 import { makeTranscriber, type Transcriber } from "./stt/index.js";
 import { makeTriager, type Triager } from "./triage/index.js";
@@ -75,9 +75,27 @@ export function makeService(overrides: Partial<ServiceDeps> = {}) {
       return rows.filter((r) => canViewDetail(viewer, r.memberId));
     },
 
+    /**
+     * The person the call concerns says yes or no. Recording a decline cancels
+     * the request; absence of consent does not block the caregiver, the app
+     * just shows that it is still waiting.
+     */
+    consent(id: string, body: ConsentBody, viewer: { memberId: string; role: Role }) {
+      const req = this.getRequest(id);
+      if (viewer.memberId !== req.memberId && viewer.role !== "caregiver") {
+        throw new ServiceError(403, "only the person this call concerns can answer for it");
+      }
+      if (req.status !== "awaiting_approval") throw new ServiceError(409, `request is ${req.status}, not awaiting approval`);
+      req.consent = { state: body.state, at: now(), by: viewer.memberId, answeredCorrectly: body.answeredCorrectly };
+      req.audit.push({ at: now(), event: `consent:${body.state}`, by: viewer.memberId });
+      if (body.state === "declined") req.status = "cancelled";
+      return deps.store.saveRequest(req);
+    },
+
     async approve(id: string, body: ApproveBody, approver: { memberId: string; role: Role; name: string }) {
       if (!canApprove(approver.role)) throw new ServiceError(403, "only a caregiver can approve a call");
       const req = this.getRequest(id);
+      if (req.consent?.state === "declined") throw new ServiceError(409, "the person this call concerns declined it");
       if (req.status !== "awaiting_approval" || !req.triage?.phone_task) throw new ServiceError(409, `request is ${req.status}, not awaiting approval`);
       const contact = resolveAllowlistedContact(deps.store.listContacts(), body.contactId);
 

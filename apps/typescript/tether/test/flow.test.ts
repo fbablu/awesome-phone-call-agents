@@ -9,15 +9,16 @@ import { Store } from "../src/store.js";
 import { transcribeFixture } from "../src/stt/fixture.js";
 import { triageFixture } from "../src/triage/index.js";
 import { config } from "../src/config.js";
+import type { probeGemini } from "../src/stt/gemini-diag.js";
 
-function harness() {
+function harness(opts: { probeGemini?: typeof probeGemini } = {}) {
   // Tests must not depend on the developer's real .env (family token, dry-run flag).
   (config as { familyToken: string }).familyToken = "";
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tether-test-"));
   const store = new Store(dir);
   store.saveContacts(JSON.parse(fs.readFileSync("fixtures/contacts.example.json", "utf8")));
   const service = makeService({ store, transcribe: transcribeFixture, triage: triageFixture, dryRun: true });
-  return { app: buildApp(service), store };
+  return { app: buildApp(service, opts), store };
 }
 const catalog = JSON.parse(fs.readFileSync("fixtures/catalog.example.json", "utf8"));
 const caregiver = { "x-tether-member": "me", "x-tether-role": "caregiver", "x-tether-name": "Fardeen" };
@@ -101,7 +102,35 @@ test("family token gates every route except health when configured", async () =>
   try {
     assert.equal((await app.request("/v1/health")).status, 200);
     assert.equal((await app.request("/v1/contacts")).status, 401);
+    assert.equal((await app.request("/v1/healthy")).status, 401, "only the two health paths are open");
     assert.equal((await app.request("/v1/contacts", { headers: { "x-tether-token": "secret" } })).status, 200);
+  } finally {
+    (config as { familyToken: string }).familyToken = prev;
+  }
+});
+
+test("the gemini health probe is open without a token, and is throttled", async () => {
+  let calls = 0;
+  const fakeProbe = (async () => {
+    calls += 1;
+    return { ok: true };
+  }) as unknown as typeof probeGemini;
+  const { app } = harness({ probeGemini: fakeProbe });
+  const prev = config.familyToken;
+  (config as { familyToken: string }).familyToken = "secret";
+  try {
+    const res = await app.request("/v1/health/gemini");
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { ok: true });
+    assert.equal((await app.request("/v1/contacts")).status, 401);
+
+    // Second hit inside the window is served from cache, so a phone refreshing does not dial Google.
+    const again = await app.request("/v1/health/gemini");
+    assert.equal(again.status, 200);
+    const body = (await again.json()) as { ok: boolean; cachedAt?: string };
+    assert.equal(body.ok, true);
+    assert.equal(typeof body.cachedAt, "string");
+    assert.equal(calls, 1);
   } finally {
     (config as { familyToken: string }).familyToken = prev;
   }
